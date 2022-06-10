@@ -8,13 +8,16 @@
 """
 from __future__ import absolute_import
 
+from fastapi import HTTPException
 from sqlalchemy import Column, Integer, String, DateTime, func, Boolean, ForeignKey
 from sqlalchemy.orm import relationship, Session
+from starlette import status
 
 from apps.core.security import verify_password
 from apps.lib.database import Base
 from apps.schemas import schemas_user
 from apps.core import security
+from config import const
 
 
 class User(Base):
@@ -90,3 +93,42 @@ class User(Base):
         if not verify_password(password, db_user.hashed_password):
             return False
         return db_user
+
+    @staticmethod
+    async def forget_password(db: Session, body: schemas_user.ForgetPassword):
+        """
+        修改密码
+        :param db:
+        :param body:
+        :return:
+        """
+        # 1.查询用户
+        account = await User.get_user_by_email(db, body.email)
+        if not account:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+        # 2.校验验证码，伪代码
+        if body.verifyCode != '1234':
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="验证码错误")
+        # 3.修改密码
+        account.hashed_password = security.get_password_hash(body.newPassword)
+        db.commit()
+        return True
+
+    @staticmethod
+    async def reset_password(db: Session, body: schemas_user.ResetPassword, user_id: int):
+        """
+        重制密码
+        :param db:
+        :param body:
+        :param user_id: 用户的主键id
+        :return:
+        """
+        account = await User.get_user_by_id(db, user_id)
+        if not account:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+        # 比对愿密码是否正确
+        if security.verify_password(body.originPassword, account.hashed_password):
+            account.hashed_password = security.get_password_hash(body.newPassword)
+            db.commit()
+            return True
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="愿密码错误")

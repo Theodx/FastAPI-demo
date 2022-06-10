@@ -10,10 +10,8 @@ import secrets
 from pydantic import BaseSettings
 
 
-
 class Settings(BaseSettings):
-
-    # JWTtoken相关
+    # JWToken相关
     ALGORITHM: str = "HS256"  # 加密算法
     # SECRET_KEY: str = secrets.token_urlsafe(32)  # 随机生成的base64位字符串
     SECRET_KEY: str = "2vUgiZ_C4hliwVq9rtRqsxKVsX3o3RaQfSo1SSwR2MU"

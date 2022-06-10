@@ -9,8 +9,9 @@
 from __future__ import absolute_import
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
+from starlette.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
-from apps.lib.middlewares import request_id_middleware
 from routers import init_router
 
 
@@ -27,9 +28,10 @@ def create_app():
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    request_id_middleware(app)
     init_router(app)
+    app.mount("/static", StaticFiles(directory="static"), name="static")
     return app
 
 
 app = create_app()
+templates = Jinja2Templates(directory="templates")

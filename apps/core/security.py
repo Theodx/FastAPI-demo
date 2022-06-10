@@ -9,9 +9,14 @@
 from __future__ import absolute_import
 
 from typing import Optional
+
+from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
+from fastapi import Request, HTTPException
+from starlette import status
+
 from config.setting import settings
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -51,3 +56,28 @@ def get_password_hash(password: str) -> str:
     :return:
     """
     return pwd_context.hash(password)
+
+
+async def verify_token(request: Request):
+    """
+    token认证
+    :param request:
+    :param call_next:
+    :return:
+    """
+    response = HTTPException(
+        detail="Token错误",
+        status_code=status.HTTP_401_UNAUTHORIZED
+    )
+    authorization = request.headers.get("authorization")
+    if not authorization or not authorization.lower().startswith("bearer"):
+        raise response
+    token = await OAuth2PasswordBearer(tokenUrl="/token")(request)
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        user_id = payload.get("user_id")
+        if not user_id:
+            raise response
+    except JWTError:
+        raise response
+    setattr(request.state, "user_id", user_id)
